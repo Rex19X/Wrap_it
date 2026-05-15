@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wrap It - Hardcore</title>
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --primary: #ff2a6d;
+            --secondary: #05d9e8;
+            --text: #ffffff;
+            --ui-bg: rgba(20, 20, 25, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Prevents mobile scrolling */
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, #1b1b24 0%, #0f0f13 100%);
+        }
+
+        /* --- UI Overlay --- */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .hud-box {
+            background: var(--ui-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 10px 20px;
+            backdrop-filter: blur(4px);
+            text-align: center;
+            min-width: 90px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .hud-label {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .hud-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--secondary);
+        }
+
+        .lives {
+            color: var(--primary);
+            font-size: 18px;
+            letter-spacing: 3px;
+        }
+
+        /* Round Counter */
+        .round-counter {
+            position: absolute;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.3);
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Combo & Feedback */
+        #comboText {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.8);
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffcc00;
+            text-shadow: 0 0 15px rgba(255, 204, 0, 0.6);
+            opacity: 0;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 5;
+        }
+
+        #comboText.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        #feedbackText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 64px;
+            font-weight: 900;
+            opacity: 0;
+            pointer-events: none;
+            text-shadow: 0 0 20px rgba(255,255,255,0.4);
+            z-index: 5;
+        }
+
+        .animate-feedback {
+            animation: feedbackPop 1s ease-out forwards;
+        }
+
+        @keyframes feedbackPop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+        }
+
+        .hint-text {
+            text-align: center;
+            color: rgba(255,255,255,0.3);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+
+        /* --- Screens (Start/Game Over) --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 8, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: auto;
+            transition: opacity 0.3s ease;
+        }
+
+        .screen.hidden {
+            display: none !important;
+            opacity: 0;
+        }
+
+        h1 {
+            font-size: 60px;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-transform: uppercase;
+            font-style: italic;
+        }
+
+        p {
+            color: #aaa;
+            margin-bottom: 40px;
+            font-size: 18px;
+            max-width: 400px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary), #d60047);
+            color: white;
+            border: none;
+            padding: 16px 48px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 42, 109, 0.4);
+            transition: transform 0.1s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 42, 109, 0.6);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .score-display {
+            font-size: 32px;
+            color: white;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        /* Screen Shake Effect */
+        .shake {
+            animation: shakeAnim 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shakeAnim {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <canvas id="canvas"></canvas>
+
+        <div class="ui-layer">
+            <div class="top-bar">
+                <div class="hud-box">
+                    <div class="hud-label">Score</div>
+                    <div class="hud-value" id="scoreVal">0</div>
+                </div>
+                <div class="hud-box">
+                    <div class="hud-label">Lives</div>
+                    <div class="hud-value lives" id="livesVal">❤❤❤</div>
+                </div>
+            </div>
+            
+            <div class="round-counter">Round <span id="roundVal">1</span></div>
+            <div id="comboText">x2 COMBO</div>
+            <div id="feedbackText">PERFECT</div>
+            
+            <div class="hint-text">Hold Space / Touch to Grow</div>
+        </div>
+
+        <div id="startScreen" class="screen">
+            <h1>Wrap It</h1>
+            <p>Hold to grow the line. Release to wrap the circle.</p>
+            <button class="btn" id="startBtn">Play Now</button>
+            <div style="margin-top: 20px; color: #555; font-size: 14px;">High Score: <span id="startHighScore">0</span></div>
+        </div>
+
+        <div id="gameOverScreen" class="screen hidden">
+            <h1>Game Over</h1>
+            <div class="score-display">Score: <span id="finalScore">0</span></div>
+            <p id="gameOverMsg">Better luck next time.</p>
+            <button class="btn" id="restartBtn">Try Again</button>
+            <div style="margin-top: 20px; color: #555; font-size: 14px;">Best: <span id="endHighScore">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Wait for DOM to be fully loaded
+        window.onload = function() {
+            
+            // --- 1. Setup & Configuration ---
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('gameContainer');
+
+            // DOM Elements
+            const scoreEl = document.getElementById('scoreVal');
+            const livesEl = document.getElementById('livesVal');
+            const roundEl = document.getElementById('roundVal');
+            const feedbackEl = document.getElementById('feedbackText');
+            const comboEl = document.getElementById('comboText');
+            const startScreen = document.getElementById('startScreen');
+            const gameOverScreen = document.getElementById('gameOverScreen');
+            const finalScoreEl = document.getElementById('finalScore');
+            const startHighScoreEl = document.getElementById('startHighScore');
+            const endHighScoreEl = document.getElementById('endHighScore');
+
+            const CONFIG = {
+                growSpeed: 700,
+                wrapTime: 0.5, // Time in seconds to wrap
+                // Tolerances (Percentage of circumference)
+                basePerfectTolerance: 0.05, // 5%
+                baseGreatTolerance: 0.12,   // 12%
+                baseGoodTolerance: 0.20,    // 20%
+                // Difficulty
+                difficultyStep: 0.002,      // Decrease tolerance by 0.2% per round
+                minTolerance: 0.005,        // Minimum 0.5% tolerance
+                baseScore: { perfect: 100, great: 50, good: 20 }
+            };
+
+            // Game State
+            let state = {
+                screen: 'start', // start, playing, wrapping, result, gameover
+                score: 0,
+                lives: 3,
+                combo: 0,
+                highScore: 0,
+                holding: false,
+                lastTime: 0,
+                bgOffset: 0,
+                round: 1,
+                currentTolerance: CONFIG.basePerfectTolerance
+            };
+
+            // Game Objects
+            let circle = { x: 0, y: 0, radius: 0, circumference: 0 };
+            let line = { length: 0, currentAngle: 0, targetAngle: 0, wrappedLength: 0 };
+            let particles = [];
+
+            // --- 2. Utilities ---
+            function getHighScore() {
+                try { return localStorage.getItem('wrapItScore') || 0; } catch (e) { return 0; }
+            }
+            function setHighScore(s) {
+                try { localStorage.setItem('wrapItScore', s); } catch (e) {}
+            }
+            state.highScore = getHighScore();
+            startHighScoreEl.innerText = state.highScore;
+
+            // --- 3. Audio System (Synth) ---
+            const audioCtx = window.AudioContext || window.webkitAudioContext;
+            let audio = {
+                ctx: null,
+                osc: null,
+                gain: null,
+                init: function() {
+                    if (!audioCtx) return;
+                    this.ctx = new audioCtx();
+                    if(this.ctx.state === 'suspended') this.ctx.resume();
+                },
+                playTone: function(freq, type, dur, vol=0.1) {
+                    if (!this.ctx) return;
+                    const o = this.ctx.createOscillator();
+                    const g = this.ctx.createGain();
+                    o.type = type;
+                    o.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    g.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+                    o.connect(g);
+                    g.connect(this.ctx.destination);
+                    o.start();
+                    o.stop(this.ctx.currentTime + dur);
+                },
+                startGrow: function() {
+                    if (!this.ctx || this.osc) return;
+                    this.osc = this.ctx.createOscillator();
+                    this.gain = this.ctx.createGain();
+                    this.osc.type = 'sawtooth';
+                    this.osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 400;
+                    this.gain.gain.value = 0.05;
+                    this.osc.connect(filter);
+                    filter.connect(this.gain);
+                    this.gain.connect(this.ctx.destination);
+                    this.osc.start();
+                },
+                stopGrow: function() {
+                    if (this.osc) {
+                        try {
+                            this.gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                            this.osc.stop(this.ctx.currentTime + 0.1);
+                        } catch(e){}
+                        this.osc = null;
+                    }
+                },
+                playSnap: function() { this.stopGrow(); this.playTone(600, 'sine', 0.1, 0.2); },
+                playSuccess: function() {
+                    this.playTone(440, 'sine', 0.2, 0.1);
+                    setTimeout(() => this.playTone(554, 'sine', 0.2, 0.1), 100);
+                    setTimeout(() => this.playTone(659, 'sine', 0.4, 0.1), 200);
+                },
+                playFail: function() {
+                    this.playTone(150, 'sawtooth', 0.4, 0.2);
+                    setTimeout(() => this.playTone(100, 'sawtooth', 0.4, 0.2), 150);
+                }
+            };
+
+            // --- 4. Game Logic ---
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                circle.x = canvas.width / 2;
+                circle.y = canvas.height * 0.6;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            function startGame() {
+                audio.init();
+                if (audio.ctx && audio.ctx.state === "suspended") {
+                    audio.ctx.resume();
+                }
+                state.score = 0;
+                state.lives = 3;
+                state.combo = 0;
+                state.round = 1;
+                // Initial tolerance
+                state.currentTolerance = Math.max(
+                    CONFIG.minTolerance, 
+                    CONFIG.basePerfectTolerance - ((state.round - 1) * CONFIG.difficultyStep)
+                );
+
+                state.screen = 'playing';
+                startScreen.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+                updateHUD();
+                nextRound();
+                requestAnimationFrame(loop);
+            }
+
+            function nextRound() {
+                // Update Difficulty (Tolerance)
+                let newTolerance = CONFIG.basePerfectTolerance - ((state.round - 1) * CONFIG.difficultyStep);
+                state.currentTolerance = Math.max(CONFIG.minTolerance, newTolerance);
+
+                const minR = 50;
+                const maxR = Math.min(canvas.width, canvas.height) * 0.25;
+                const safeMax = Math.max(minR + 10, maxR);
+                
+                circle.radius = Math.random() * (safeMax - minR) + minR;
+                circle.circumference = 2 * Math.PI * circle.radius;
+                
+                line.length = 0;
+                line.currentAngle = 0;
+                line.targetAngle = 0;
+                
+                state.holding = false;
+                state.screen = 'playing';
+            }
+
+            function finishRound() {
+                state.screen = 'result';
+                
+                const diff = Math.abs(circle.circumference - line.length);
+                const percentDiff = diff / circle.circumference;
+                
+                // Dynamic Thresholds
+                const perfectThreshold = state.currentTolerance;
+                const greatThreshold = state.currentTolerance * 2.5;
+                const goodThreshold = state.currentTolerance * 4.0;
+
+                let points = 0;
+let text = "";
+let color = "";
+
+const accuracy = (1 - percentDiff) * 100; // convert to % match
+
+if (accuracy >= 100) {
+    points = CONFIG.baseScore.perfect * (1 + state.combo * 0.5);
+    text = state.combo > 1 ? `PERFECT x${state.combo + 1}` : "PERFECT";
+    color = "#00ff88";
+    state.combo++;
+    audio.playSuccess();
+    spawnParticles(circle.x, circle.y, color, 40);
+
+} else if (accuracy >= 96) {
+    points = CONFIG.baseScore.great * 2; // OUTSTANDING bonus
+    text = "OUTSTANDING";
+    color = "#00e5ff";
+    state.combo++;
+    audio.playSuccess();
+    spawnParticles(circle.x, circle.y, color, 35);
+
+} else if (accuracy >= 90) {
+    points = CONFIG.baseScore.great;
+    text = "GREAT";
+    color = "#ffff00";
+    state.combo = 0;
+    audio.playSnap();
+    spawnParticles(circle.x, circle.y, color, 25);
+
+} else if (accuracy >= 75) {
+    points = CONFIG.baseScore.good;
+    text = "GOOD";
+    color = "#ffaa00";
+    state.combo = 0;
+    audio.playSnap();
+
+} else {
+    text = "MISS";
+    color = "#ff2a6d";
+    state.combo = 0;
+    state.lives--;
+    audio.playFail();
+    spawnParticles(circle.x, circle.y, color, 30);
+    triggerShake();
+}
+
+                state.score += Math.floor(points);
+                if (state.score > state.highScore) {
+                    state.highScore = state.score;
+                    setHighScore(state.highScore);
+                }
+
+                updateHUD();
+                showFeedback(text, color);
+                updateComboUI();
+
+                if (state.lives <= 0) {
+                    setTimeout(gameOver, 1000);
+                } else {
+                    state.round++;
+                    setTimeout(nextRound, 1200);
+                }
+            }
+
+            function gameOver() {
+                state.screen = 'gameover';
+                finalScoreEl.innerText = state.score;
+                endHighScoreEl.innerText = state.highScore;
+                gameOverScreen.classList.remove('hidden');
+            }
+
+            // --- 5. Input Handling ---
+            function handleInputStart(e) {
+                if (e.type === 'touchstart') e.preventDefault();
+                if (state.screen === 'playing') {
+                    state.holding = true;
+                    audio.startGrow();
+                }
+            }
+
+            function handleInputEnd(e) {
+                if (e.cancelable) e.preventDefault();
+                if (state.screen === 'playing' && state.holding) {
+                    state.holding = false;
+                    state.screen = 'wrapping';
+                    line.targetAngle = line.length / circle.radius;
+                    audio.playSnap();
+                }
+            }
+
+            // Event Listeners
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('restartBtn').addEventListener('click', startGame);
+
+            window.addEventListener('keydown', e => { if(e.code === 'Space') handleInputStart(e); });
+            window.addEventListener('keyup', e => { if(e.code === 'Space') handleInputEnd(e); });
+
+            canvas.addEventListener('mousedown', handleInputStart);
+            canvas.addEventListener('mouseup', handleInputEnd);
+            canvas.addEventListener('touchstart', handleInputStart, {passive: false});
+            canvas.addEventListener('touchend', handleInputEnd, {passive: false});
+
+            // --- 6. Visuals & Rendering ---
+            function spawnParticles(x, y, c, count) {
+                for(let i=0; i<count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 10 + 2;
+                    particles.push({
+                        x: x, y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 1,
+                        color: c
+                    });
+                }
+            }
+
+            function triggerShake() {
+                container.classList.remove('shake');
+                void container.offsetWidth;
+                container.classList.add('shake');
+            }
+
+            function showFeedback(text, color) {
+                feedbackEl.innerText = text;
+                feedbackEl.style.color = color;
+                feedbackEl.classList.remove('animate-feedback');
+                void feedbackEl.offsetWidth;
+                feedbackEl.classList.add('animate-feedback');
+            }
+
+            function updateHUD() {
+                scoreEl.innerText = state.score;
+                livesEl.innerText = "❤".repeat(state.lives);
+                roundEl.innerText = state.round;
+            }
+
+            function updateComboUI() {
+                if (state.combo > 1) {
+                    comboEl.innerText = `x${state.combo+1} COMBO`;
+                    comboEl.classList.add('show');
+                } else {
+                    comboEl.classList.remove('show');
+                }
+            }
+
+            function update(dt) {
+                state.bgOffset += 20 * dt;
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= dt * 1.5;
+                    p.vy += 20 * dt;
+                });
+                particles = particles.filter(p => p.life > 0);
+
+                if (state.screen === 'playing') {
+                    if (state.holding) {
+                        line.length += CONFIG.growSpeed * dt;
+                        // Particles at tip
+                        if(Math.random() > 0.7) {
+                            const tipY = (circle.y - circle.radius) - line.length;
+                            spawnParticles(circle.x - circle.radius, tipY, '#05d9e8', 1);
+                        }
+                    }
+                }else if (state.screen === 'wrapping') {
+                    const speed = line.targetAngle / CONFIG.wrapTime;
+                    line.currentAngle += speed * dt;
+
+    // progress (0 → 1)
+    const progress = Math.min(line.currentAngle / line.targetAngle, 1);
+
+    // smoothly animate "apparent length"
+    line.wrappedLength = line.length * progress;
+
+    if (line.currentAngle >= line.targetAngle) {
+        line.currentAngle = line.targetAngle;
+        line.wrappedLength = line.length;
+        finishRound();
+    }
+}
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Background Grid
+                ctx.strokeStyle = "rgba(255,255,255,0.03)";
+                ctx.lineWidth = 1;
+                const gridSize = 60;
+                const yOff = state.bgOffset % gridSize;
+                ctx.beginPath();
+                for (let x=0; x<canvas.width; x+=gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+                for (let y=yOff; y<canvas.height; y+=gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+                ctx.stroke();
+
+                const cx = circle.x;
+                const cy = circle.y;
+                const r = circle.radius;
+
+                // Base Circle
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(30,30,40, 0.8)";
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "rgba(255,255,255,0.1)";
+                ctx.stroke();
+
+                // Draw Percentage Text
+                // ONLY visible during wrapping or result.
+                // Formula: (Length / Circumference) * 100. NO CAP.
+                if (state.screen === 'wrapping' || state.screen === 'result') {
+                        const displayLength =
+        state.screen === 'wrapping'
+            ? line.wrappedLength
+            : line.length;
+
+    const pct = circle.circumference
+        ? ((displayLength / circle.circumference) * 100).toFixed(1)
+        : "0.0";
+                    
+                    ctx.fillStyle = "rgba(255,255,255,0.9)";
+                    // Adjust font size to fit bigger numbers like 200%
+                    const fontSize = Math.max(20, Math.min(r * 0.35, 50)); 
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(`${pct}%`, cx, cy);
+                }
+
+                // Draw Growing Line
+                if (state.screen === 'playing') {
+                    const startX = cx - r;
+                    const startY = cy;
+                    const endY = startY - line.length;
+
+                    // The Line
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(startX, endY);
+                    
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = "#05d9e8";
+                    ctx.strokeStyle = "#05d9e8";
+                    ctx.lineWidth = 6;
+                    ctx.lineCap = "round";
+                    ctx.stroke();
+
+                    // Anchor Point
+                    ctx.beginPath();
+                    ctx.arc(startX, startY, 5, 0, Math.PI*2);
+                    ctx.fillStyle = "rgba(255,255,255,0.5)";
+                    ctx.fill();
+
+                    // White Ball at FRONT of line
+                    ctx.beginPath();
+                    ctx.arc(startX, endY, 6, 0, Math.PI*2);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = "#ffffff"; // White glow
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                // Draw Wrapped Arc
+                if (state.screen === 'wrapping' || state.screen === 'result') {
+                    const startAngle = Math.PI;
+                    const endAngle = startAngle + line.currentAngle;
+
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r + 3, startAngle, endAngle);
+
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = "#ff2a6d";
+                    ctx.strokeStyle = "#ff2a6d";
+                    ctx.lineWidth = 6;
+                    ctx.lineCap = "round";
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+
+                // Particles
+                particles.forEach(p => {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+            }
+
+            // --- 7. Main Loop ---
+            function loop(timestamp) {
+    if (!state.lastTime) state.lastTime = timestamp;
+    const dt = (timestamp - state.lastTime) / 1000;
+    state.lastTime = timestamp;
+
+    update(dt);
+    draw();
+
+    requestAnimationFrame(loop);
+}
+        };
+    </script>
+</body>
+</html>

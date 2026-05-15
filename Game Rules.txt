@@ -1,0 +1,55 @@
+In this game, a circle appears at the center of the screen as the main target area. When the player presses and holds the control button, a line begins to grow outward in a straight direction at a constant linear speed. The objective is to release the hold at the perfect moment so the line wraps around the circle as accurately as possible.
+
+The game measures how precisely the line matches the circle’s boundary. If the line is too short or too long, the accuracy score decreases. A perfectly timed release results in a clean wrap and earns the highest score. The scoring system is based on precision, timing, and alignment with the circle’s circumference.
+
+## Rules and Regulations of the Game
+
+1. **Game Objective**
+   The player must grow and release a line so it wraps around the circle as accurately as possible.
+
+2. **Starting the Game**
+
+   * A circle appears on the screen.
+   * The player starts line growth by pressing and holding the control button.
+
+3. **Line Growth Mechanism**
+
+   * The line grows continuously at a fixed linear speed while the button is held.
+   * Releasing the button stops the growth instantly.
+
+4. **Scoring Rules**
+
+   * The score is calculated based on how closely the line matches the circle’s circumference.
+   * A perfect wrap earns maximum points.
+   * Overgrowth or undergrowth reduces the score proportionally.
+
+5. **Accuracy Levels**
+
+   * 95–100% match: Perfect
+   * 80–94% match: Great
+   * 60–79% match: Good
+   * Below 60%: Poor
+
+6. **Difficulty Progression**
+
+   * Higher levels may include smaller circles, faster line growth, rotating circles, or moving targets.
+   * Difficulty increases gradually after each successful round.
+
+7. **Game Over Conditions**
+
+   * The game ends if the player fails to meet the minimum accuracy requirement for a round.
+   * Optional lives or retry chances may be included.
+
+8. **Fair Play Rules**
+
+   * No external timing tools or automated controls are allowed.
+   * Players must rely only on reaction time and visual judgment.
+
+9. **Winning Condition**
+
+   * The player with the highest cumulative precision score wins or reaches the highest level.
+
+10. **Gameplay Principles**
+
+* The game rewards timing, concentration, and precision.
+* Quick reactions and consistent accuracy are essential for success.
