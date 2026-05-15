@@ -473,7 +473,7 @@ let color = "";
 
 const accuracy = (1 - percentDiff) * 100; // convert to % match
 
-if (accuracy >= 100) {
+if (accuracy >= 99.6) {
     points = CONFIG.baseScore.perfect * (1 + state.combo * 0.5);
     text = state.combo > 1 ? `PERFECT x${state.combo + 1}` : "PERFECT";
     color = "#00ff88";
